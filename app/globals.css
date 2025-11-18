@@ -1,26 +1,241 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Professional Financial Design System - Clean & Trustworthy */
+
+    /* Primary Colors - Financial Navy Blue (Trust & Professionalism) */
+    --primary: 214 84% 20%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary Colors - Refined Gray (Balance & Sophistication) */
+    --secondary: 215 15% 50%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Accent Colors - Success Green (Growth & Approval) */
+    --accent: 151 65% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Background Colors - Clean White Base */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    /* Card & Surface Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    /* Popover Colors */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Muted Colors - Improved contrast for accessibility (WCAG AA) */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 20% 35%;
+
+    /* Destructive/Error Colors */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 214 84% 20%;
+
+    /* Radius - More professional sharp edges */
+    --radius: 0.375rem;
+
+    /* Financial-specific colors */
+    --financial-gold: 45 100% 51%;
+    --financial-blue: 214 84% 20%;
+    --financial-green: 151 65% 42%;
+    --financial-navy: 214 100% 15%;
+  }
+
+  .dark {
+    --primary: 214 84% 30%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 15% 30%;
+    --secondary-foreground: 0 0% 100%;
+
+    --accent: 151 65% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 15%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 15%;
+    --popover-foreground: 210 40% 98%;
+
+    --muted: 215 20% 20%;
+    --muted-foreground: 215 16% 70%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 20% 25%;
+    --input: 215 20% 25%;
+    --ring: 214 84% 30%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Inter font optimization */
+  @supports (font-variation-settings: normal) {
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+  }
 }
+
+@layer components {
+  /* Financial Value Display - Tabular Lining for Numbers */
+  .financial-value {
+    @apply font-mono tabular-nums tracking-tight;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Container Utilities */
+  .container-custom {
+    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Professional Financial Gradients */
+  .gradient-financial-primary {
+    @apply bg-gradient-to-br from-[#1E6F5C] via-[#1E6F5C] to-[#175A4A];
+  }
+
+  .gradient-financial-success {
+    @apply bg-gradient-to-br from-[#059669] via-[#10B981] to-[#34D399];
+  }
+
+  .gradient-financial-hero {
+    @apply bg-gradient-to-r from-[#1E6F5C] via-[#175A4A] to-[#1E6F5C];
+  }
+
+  /* Professional Card Shadows */
+  .card-shadow {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  }
+
+  .card-shadow-md {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  }
+
+  .card-shadow-lg {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+  }
+
+  .card-shadow-xl {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.06);
+  }
+
+  /* Trust Badge Styling */
+  .trust-badge {
+    @apply inline-flex items-center gap-2 rounded-md bg-green-50 px-3 py-1.5 text-sm font-medium text-green-700 border border-green-200;
+  }
+
+  /* Professional CTA Button */
+  .cta-button {
+    @apply bg-[#1E6F5C] hover:bg-[#175A4A] text-white font-semibold px-8 py-3.5 rounded-md shadow-md hover:shadow-lg transition-all duration-200;
+  }
+
+  .cta-button-success {
+    @apply bg-[#10B981] hover:bg-[#059669] text-white font-semibold px-8 py-3.5 rounded-md shadow-md hover:shadow-lg transition-all duration-200;
+  }
+
+  /* Professional Input Focus */
+  .input-focus {
+    @apply focus:ring-2 focus:ring-[#1E6F5C] focus:border-[#1E6F5C] transition-all duration-200;
+  }
+
+  /* Financial Stats */
+  .stat-card {
+    @apply bg-white rounded-lg border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  /* Professional Section */
+  .section-professional {
+    @apply py-16 md:py-24 bg-white;
+  }
+
+  .section-professional-alt {
+    @apply py-16 md:py-24 bg-gray-50;
+  }
+
+  /* Mobile Optimizations */
+  @media (max-width: 768px) {
+    .section-professional,
+    .section-professional-alt {
+      @apply py-12;
+    }
+  }
+}
+
+@layer utilities {
+  /* Text Balance for Headlines */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Smooth Scroll */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+  }
+
+  /* Hide Scrollbar */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Blob Animation */
+  @keyframes blob {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    25% {
+      transform: translate(20px, -50px) scale(1.1);
+    }
+    50% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
+    75% {
+      transform: translate(50px, 50px) scale(1.05);
+    }
+  }
+
+  .animate-blob {
+    animation: blob 7s infinite;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+}
+
+/* Inter Font Import - Already imported at top of file */

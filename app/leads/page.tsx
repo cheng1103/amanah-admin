@@ -1,0 +1,310 @@
+"use client"
+
+import * as React from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { api } from "@/lib/api-client"
+import { Loader2, ArrowLeft, Mail, Phone, MapPin, DollarSign, Briefcase, RefreshCw } from "lucide-react"
+
+interface Lead {
+  id: string
+  name: string
+  email: string
+  phone: string
+  loanAmount: number
+  loanPurpose: string
+  employmentStatus: string
+  monthlyIncome?: number
+  status: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export default function AdminLeadsPage({ params }: { params: { lang: string } }) {
+  const router = useRouter()
+  const [leads, setLeads] = React.useState<Lead[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState("")
+  const [updatingId, setUpdatingId] = React.useState<string | null>(null)
+
+  const isEnglish = params.lang === 'en'
+
+  // Wrap fetchLeads in useCallback to avoid dependency issues
+  const fetchLeads = React.useCallback(async () => {
+    setLoading(true)
+    setError("")
+
+    try {
+      const response = await api.leads.getAll()
+      setLeads(response)
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } }
+      setError(
+        error.response?.data?.message ||
+        (isEnglish ? 'Failed to load leads' : 'Gagal memuatkan lead')
+      )
+    } finally {
+      setLoading(false)
+    }
+  }, [isEnglish])
+
+  // ✅ SECURITY FIX: Authentication is now handled by middleware.ts
+  // No need to check localStorage - middleware verifies httpOnly cookies
+  React.useEffect(() => {
+    fetchLeads()
+  }, [fetchLeads])
+
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    setUpdatingId(leadId)
+
+    // Store the original status for rollback
+    const originalLead = leads.find(lead => lead.id === leadId)
+    const originalStatus = originalLead?.status
+
+    try {
+      // Optimistically update the UI
+      setLeads(prev => prev.map(lead =>
+        lead.id === leadId ? { ...lead, status: newStatus } : lead
+      ))
+
+      // Make API call
+      const response = await api.leads.updateStatus(leadId, newStatus)
+
+      // Update with actual server response if available
+      if (response && response.status) {
+        setLeads(prev => prev.map(lead =>
+          lead.id === leadId ? { ...lead, status: response.status, updatedAt: response.updatedAt || lead.updatedAt } : lead
+        ))
+      }
+    } catch (err) {
+      // Rollback to original status on error
+      if (originalStatus) {
+        setLeads(prev => prev.map(lead =>
+          lead.id === leadId ? { ...lead, status: originalStatus } : lead
+        ))
+      }
+
+      const error = err as { response?: { data?: { message?: string } } }
+      alert(
+        error.response?.data?.message ||
+        (isEnglish ? 'Failed to update status' : 'Gagal mengemas kini status')
+      )
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive' | null | undefined
+    const statusConfig: Record<string, { variant: BadgeVariant, label: { en: string, ms: string } }> = {
+      NEW: {
+        variant: 'default',
+        label: { en: 'New', ms: 'Baru' }
+      },
+      CONTACTED: {
+        variant: 'secondary',
+        label: { en: 'Contacted', ms: 'Dihubungi' }
+      },
+      QUALIFIED: {
+        variant: 'outline',
+        label: { en: 'Qualified', ms: 'Layak' }
+      },
+      PROPOSAL: {
+        variant: 'outline',
+        label: { en: 'Proposal', ms: 'Cadangan' }
+      },
+      NEGOTIATION: {
+        variant: 'outline',
+        label: { en: 'Negotiation', ms: 'Rundingan' }
+      },
+      CLOSED_WON: {
+        variant: 'default',
+        label: { en: 'Won', ms: 'Menang' }
+      },
+      CLOSED_LOST: {
+        variant: 'destructive',
+        label: { en: 'Lost', ms: 'Kalah' }
+      }
+    }
+
+    const config = statusConfig[status] || statusConfig.NEW
+    return (
+      <Badge variant={config.variant}>
+        {isEnglish ? config.label.en : config.label.ms}
+      </Badge>
+    )
+  }
+
+  const formatCurrency = (amount: number) => {
+    const formatted = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return `RM${formatted}`
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-MY', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      {/* Header */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href={`/${params.lang}/admin/dashboard`}>
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  {isEnglish ? 'Back' : 'Kembali'}
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {isEnglish ? 'Lead Management' : 'Pengurusan Lead'}
+                </h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  {leads.length} {isEnglish ? 'total leads' : 'jumlah lead'}
+                </p>
+              </div>
+            </div>
+            <Button onClick={fetchLeads} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {isEnglish ? 'Refresh' : 'Muat Semula'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
+
+        {leads.length === 0 ? (
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center text-muted-foreground">
+                <p className="text-lg">
+                  {isEnglish ? 'No leads found' : 'Tiada lead dijumpai'}
+                </p>
+                <p className="text-sm mt-2">
+                  {isEnglish ? 'Leads will appear here when customers submit applications' : 'Lead akan muncul di sini apabila pelanggan menghantar permohonan'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {leads.map((lead) => (
+              <Card key={lead.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-xl">{lead.name}</CardTitle>
+                      <CardDescription className="mt-1">
+                        {formatDate(lead.createdAt)}
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(lead.status)}
+                      <Badge variant="outline">{lead.loanPurpose}</Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <a href={`mailto:${lead.email}`} className="text-primary-600 hover:underline">
+                        {lead.email}
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <a href={`tel:${lead.phone}`} className="text-primary-600 hover:underline">
+                        {lead.phone}
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold">{formatCurrency(lead.loanAmount)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Briefcase className="h-4 w-4 text-muted-foreground" />
+                      <span>{lead.employmentStatus}</span>
+                    </div>
+                    {lead.monthlyIncome && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span>{isEnglish ? 'Income:' : 'Pendapatan:'} {formatCurrency(lead.monthlyIncome)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {lead.notes && (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-700"><strong>{isEnglish ? 'Notes:' : 'Nota:'}</strong> {lead.notes}</p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3">
+                    <Label className="text-sm font-medium">
+                      {isEnglish ? 'Status:' : 'Status:'}
+                    </Label>
+                    <Select
+                      value={lead.status}
+                      onValueChange={(value) => handleStatusChange(lead.id, value)}
+                      disabled={updatingId === lead.id}
+                    >
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NEW">{isEnglish ? 'New' : 'Baru'}</SelectItem>
+                        <SelectItem value="CONTACTED">{isEnglish ? 'Contacted' : 'Dihubungi'}</SelectItem>
+                        <SelectItem value="QUALIFIED">{isEnglish ? 'Qualified' : 'Layak'}</SelectItem>
+                        <SelectItem value="PROPOSAL">{isEnglish ? 'Proposal' : 'Cadangan'}</SelectItem>
+                        <SelectItem value="NEGOTIATION">{isEnglish ? 'Negotiation' : 'Rundingan'}</SelectItem>
+                        <SelectItem value="CLOSED_WON">{isEnglish ? 'Closed Won' : 'Berjaya'}</SelectItem>
+                        <SelectItem value="CLOSED_LOST">{isEnglish ? 'Closed Lost' : 'Gagal'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {updatingId === lead.id && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Label({ children, className }: { children: React.ReactNode, className?: string }) {
+  return <label className={className}>{children}</label>
+}

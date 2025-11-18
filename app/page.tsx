@@ -40,21 +40,24 @@ export default function AdminLoginPage({ params }: { params: { lang: string } })
     let isMounted = true
 
     try {
-      const response = await api.auth.login(email, password) as LoginResponse
+      const response = await api.auth.login(email, password) as any
 
       if (!isMounted) return
 
-      if (response.access_token) {
+      // Backend returns { success: true, data: { access_token, user } }
+      const data = response.data || response
+
+      if (data.access_token) {
         // ✅ Use Server Actions for httpOnly cookies (SECURE)
-        await setAuthCookie(response.access_token)
+        await setAuthCookie(data.access_token)
 
         // Store user info in non-httpOnly cookie (for UI display only)
-        if (response.user) {
-          await setUserDataCookie(response.user)
+        if (data.user) {
+          await setUserDataCookie(data.user)
         }
 
         // Redirect to dashboard
-        router.push(`/${params.lang}/admin/dashboard`)
+        router.push(`/dashboard`)
       } else {
         throw new Error('Invalid response')
       }

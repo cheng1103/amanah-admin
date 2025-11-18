@@ -41,13 +41,16 @@ export default function AdminLoginPage() {
 
     try {
       const response = await api.auth.login(email, password) as any
+      console.log('Login response:', response)
 
       if (!isMounted) return
 
       // Backend returns { success: true, data: { access_token, user } }
       const data = response.data || response
+      console.log('Extracted data:', data)
 
       if (data.access_token) {
+        console.log('Access token found, setting cookie')
         // ✅ Use Server Actions for httpOnly cookies (SECURE)
         await setAuthCookie(data.access_token)
 
@@ -59,7 +62,8 @@ export default function AdminLoginPage() {
         // Redirect to dashboard
         router.push(`/dashboard`)
       } else {
-        throw new Error('Invalid response')
+        console.error('No access_token in response. Full response:', response)
+        throw new Error('Invalid response: ' + JSON.stringify(data))
       }
     } catch (err: unknown) {
       if (!isMounted) return

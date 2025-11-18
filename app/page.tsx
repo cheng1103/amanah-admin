@@ -20,14 +20,14 @@ interface LoginResponse {
   };
 }
 
-export default function AdminLoginPage({ params }: { params: { lang: string } }) {
+export default function AdminLoginPage() {
   const router = useRouter()
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState("")
 
-  const isEnglish = params.lang === 'en'
+  const isEnglish = true // Default to English for admin panel
 
   // ✅ SECURITY FIX: Removed client-side localStorage check
   // Authentication is now handled by middleware.ts using httpOnly cookies

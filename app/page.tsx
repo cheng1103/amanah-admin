@@ -63,17 +63,22 @@ export default function AdminLoginPage() {
         router.push(`/dashboard`)
       } else {
         console.error('No access_token in response. Full response:', response)
-        throw new Error('Invalid response: ' + JSON.stringify(data))
+        // Show detailed error on page
+        setError('Debug: No access_token. Response: ' + JSON.stringify(data).substring(0, 200))
+        return
       }
     } catch (err: unknown) {
       if (!isMounted) return
 
       const error = err as { response?: { data?: { message?: string } }; message?: string }
-      setError(
-        error.response?.data?.message ||
-        error.message ||
-        (isEnglish ? 'Login failed. Please check your credentials.' : 'Log masuk gagal. Sila semak kelayakan anda.')
-      )
+      console.error('Login error:', error)
+
+      // Show detailed error including response data
+      const errorMessage = error.response?.data?.message ||
+                          error.message ||
+                          JSON.stringify(error.response?.data || error).substring(0, 200)
+
+      setError(errorMessage || (isEnglish ? 'Login failed. Please check your credentials.' : 'Log masuk gagal. Sila semak kelayakan anda.'))
     } finally {
       if (isMounted) {
         setIsLoading(false)

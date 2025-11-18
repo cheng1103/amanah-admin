@@ -12,7 +12,7 @@ import type {
   User,
 } from '@/types/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.amanahbestcredit.com/api';
 
 const apiClient = axios.create({
   baseURL: API_URL,

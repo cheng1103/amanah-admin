@@ -41,18 +41,13 @@ export default function AdminLoginPage() {
 
     try {
       const response = await api.auth.login(email, password) as any
-      console.log('Login response:', response)
 
       if (!isMounted) return
 
       // Backend returns { success: true, data: { access_token, user } }
       const data = response.data || response
-      console.log('Extracted data:', data)
 
       if (data.access_token) {
-        console.log('✅ Login successful! Token received.')
-        console.log('User:', data.user)
-
         // Store auth token in cookie (client-side)
         const maxAge = 60 * 60 * 24 // 24 hours
         document.cookie = `authToken=${data.access_token}; path=/; max-age=${maxAge}; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
@@ -62,30 +57,20 @@ export default function AdminLoginPage() {
           document.cookie = `userData=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${maxAge}; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
         }
 
-        console.log('✅ Cookies set successfully')
-        console.log('Redirecting to dashboard...')
-
         // Small delay to ensure cookies are set before redirect
         setTimeout(() => {
           router.push('/dashboard')
         }, 100)
       } else {
-        console.error('No access_token in response. Full response:', response)
-        // Show detailed error on page
-        setError('Debug: No access_token. Response: ' + JSON.stringify(data).substring(0, 200))
+        setError(isEnglish ? 'Invalid response from server' : 'Respons tidak sah dari pelayan')
         return
       }
     } catch (err: unknown) {
       if (!isMounted) return
 
       const error = err as { response?: { data?: { message?: string } }; message?: string }
-      console.error('Login error:', error)
 
-      // Show detailed error including response data
-      const errorMessage = error.response?.data?.message ||
-                          error.message ||
-                          JSON.stringify(error.response?.data || error).substring(0, 200)
-
+      const errorMessage = error.response?.data?.message || error.message
       setError(errorMessage || (isEnglish ? 'Login failed. Please check your credentials.' : 'Log masuk gagal. Sila semak kelayakan anda.'))
     } finally {
       if (isMounted) {

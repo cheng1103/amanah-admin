@@ -25,7 +25,7 @@ interface AdminUser {
   createdAt: string
 }
 
-export default function AdminUsersPage() {
+export default function AdminUsersPage({ params }: { params: { lang: string } }) {
   const router = useRouter()
   const [user, setUser] = React.useState<any>(null)
   const [users, setUsers] = React.useState<AdminUser[]>([])
@@ -44,6 +44,7 @@ export default function AdminUsersPage() {
     variant: "success"
   })
 
+  const isEnglish = params.lang === 'en'
   const itemsPerPage = 10
 
   // Form state
@@ -71,7 +72,7 @@ export default function AdminUsersPage() {
 
         // Check if user has permission (only Super Admin and Admin can manage users)
         if (parsedUser.role === 'Viewer') {
-          router.push(`/dashboard`)
+          router.push(`/${params.lang}/admin/dashboard`)
           return
         }
       } catch (e) {
@@ -293,7 +294,7 @@ export default function AdminUsersPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href={`/dashboard`}>
+              <Link href={`/${params.lang}/admin/dashboard`}>
                 <Button variant="ghost" size="icon">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>

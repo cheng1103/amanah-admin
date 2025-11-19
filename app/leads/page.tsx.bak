@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { api } from "@/lib/api-client"
-import { Loader2, ArrowLeft, Mail, Phone, DollarSign, Briefcase, RefreshCw, Trash2 } from "lucide-react"
+import { Loader2, ArrowLeft, Mail, Phone, MapPin, DollarSign, Briefcase, RefreshCw } from "lucide-react"
 
 interface Lead {
   id: string
@@ -32,6 +32,7 @@ export default function AdminLeadsPage() {
   const [error, setError] = React.useState("")
   const [updatingId, setUpdatingId] = React.useState<string | null>(null)
 
+  // Fetch leads from API
   const fetchLeads = React.useCallback(async () => {
     setLoading(true)
     setError("")
@@ -47,73 +48,101 @@ export default function AdminLeadsPage() {
     }
   }, [])
 
+  // ✅ SECURITY FIX: Authentication is now handled by middleware.ts
+  // No need to check localStorage - middleware verifies httpOnly cookies
   React.useEffect(() => {
     fetchLeads()
   }, [fetchLeads])
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     setUpdatingId(leadId)
+
+    // Store the original status for rollback
     const originalLead = leads.find(lead => lead.id === leadId)
     const originalStatus = originalLead?.status
 
     try {
+      // Optimistically update the UI
       setLeads(prev => prev.map(lead =>
         lead.id === leadId ? { ...lead, status: newStatus } : lead
       ))
 
+      // Make API call
       const response = await api.leads.updateStatus(leadId, newStatus)
 
+      // Update with actual server response if available
       if (response && response.status) {
         setLeads(prev => prev.map(lead =>
           lead.id === leadId ? { ...lead, status: response.status, updatedAt: response.updatedAt || lead.updatedAt } : lead
         ))
       }
     } catch (err) {
+      // Rollback to original status on error
       if (originalStatus) {
         setLeads(prev => prev.map(lead =>
           lead.id === leadId ? { ...lead, status: originalStatus } : lead
         ))
       }
+
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to update status')
+      alert(
+        error.response?.data?.message ||
+        (isEnglish ? 'Failed to update status' : 'Gagal mengemas kini status')
+      )
     } finally {
       setUpdatingId(null)
     }
   }
 
-  const handleDelete = async (leadId: string) => {
-    if (!confirm('Are you sure you want to delete this lead?')) return
-
-    try {
-      await api.leads.delete(leadId)
-      setLeads(prev => prev.filter(lead => lead.id !== leadId))
-    } catch (err) {
-      const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to delete lead')
-    }
-  }
-
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive', label: string }> = {
-      NEW: { variant: 'default', label: 'New' },
-      CONTACTED: { variant: 'secondary', label: 'Contacted' },
-      QUALIFIED: { variant: 'outline', label: 'Qualified' },
-      PROPOSAL: { variant: 'outline', label: 'Proposal' },
-      NEGOTIATION: { variant: 'outline', label: 'Negotiation' },
-      CLOSED_WON: { variant: 'default', label: 'Won' },
-      CLOSED_LOST: { variant: 'destructive', label: 'Lost' }
+    type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive' | null | undefined
+    const statusConfig: Record<string, { variant: BadgeVariant, label: { en: string, ms: string } }> = {
+      NEW: {
+        variant: 'default',
+        label: { en: 'New', ms: 'Baru' }
+      },
+      CONTACTED: {
+        variant: 'secondary',
+        label: { en: 'Contacted', ms: 'Dihubungi' }
+      },
+      QUALIFIED: {
+        variant: 'outline',
+        label: { en: 'Qualified', ms: 'Layak' }
+      },
+      PROPOSAL: {
+        variant: 'outline',
+        label: { en: 'Proposal', ms: 'Cadangan' }
+      },
+      NEGOTIATION: {
+        variant: 'outline',
+        label: { en: 'Negotiation', ms: 'Rundingan' }
+      },
+      CLOSED_WON: {
+        variant: 'default',
+        label: { en: 'Won', ms: 'Menang' }
+      },
+      CLOSED_LOST: {
+        variant: 'destructive',
+        label: { en: 'Lost', ms: 'Kalah' }
+      }
     }
 
     const config = statusConfig[status] || statusConfig.NEW
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    return (
+      <Badge variant={config.variant}>
+        {isEnglish ? config.label.en : config.label.ms}
+      </Badge>
+    )
   }
 
   const formatCurrency = (amount: number) => {
-    return `RM${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const formatted = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return `RM${formatted}`
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-MY', {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-MY', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -132,29 +161,35 @@ export default function AdminLeadsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard">
+              <Link href={`/${params.lang}/admin/dashboard`}>
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
+                  {isEnglish ? 'Back' : 'Kembali'}
                 </Button>
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Lead Management</h1>
-                <p className="text-sm text-gray-600 mt-1">{leads.length} total leads</p>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {isEnglish ? 'Lead Management' : 'Pengurusan Lead'}
+                </h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  {leads.length} {isEnglish ? 'total leads' : 'jumlah lead'}
+                </p>
               </div>
             </div>
             <Button onClick={fetchLeads} variant="outline">
               <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              {isEnglish ? 'Refresh' : 'Muat Semula'}
             </Button>
           </div>
         </div>
       </div>
 
+      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -166,8 +201,12 @@ export default function AdminLeadsPage() {
           <Card>
             <CardContent className="py-12">
               <div className="text-center text-muted-foreground">
-                <p className="text-lg">No leads found</p>
-                <p className="text-sm mt-2">Leads will appear here when customers submit applications</p>
+                <p className="text-lg">
+                  {isEnglish ? 'No leads found' : 'Tiada lead dijumpai'}
+                </p>
+                <p className="text-sm mt-2">
+                  {isEnglish ? 'Leads will appear here when customers submit applications' : 'Lead akan muncul di sini apabila pelanggan menghantar permohonan'}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -179,7 +218,9 @@ export default function AdminLeadsPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-xl">{lead.name}</CardTitle>
-                      <CardDescription className="mt-1">{formatDate(lead.createdAt)}</CardDescription>
+                      <CardDescription className="mt-1">
+                        {formatDate(lead.createdAt)}
+                      </CardDescription>
                     </div>
                     <div className="flex items-center gap-3">
                       {getStatusBadge(lead.status)}
@@ -191,13 +232,13 @@ export default function AdminLeadsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <a href={`mailto:${lead.email}`} className="text-primary hover:underline">
+                      <a href={`mailto:${lead.email}`} className="text-primary-600 hover:underline">
                         {lead.email}
                       </a>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <a href={`tel:${lead.phone}`} className="text-primary hover:underline">
+                      <a href={`tel:${lead.phone}`} className="text-primary-600 hover:underline">
                         {lead.phone}
                       </a>
                     </div>
@@ -211,52 +252,43 @@ export default function AdminLeadsPage() {
                     </div>
                     {lead.monthlyIncome && (
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">Monthly Income:</span>
-                        <span className="font-semibold">{formatCurrency(lead.monthlyIncome)}</span>
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span>{isEnglish ? 'Income:' : 'Pendapatan:'} {formatCurrency(lead.monthlyIncome)}</span>
                       </div>
                     )}
                   </div>
 
                   {lead.notes && (
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-700"><strong>Notes:</strong> {lead.notes}</p>
+                      <p className="text-sm text-gray-700"><strong>{isEnglish ? 'Notes:' : 'Nota:'}</strong> {lead.notes}</p>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-4 border-t">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">Status:</span>
-                      <Select
-                        value={lead.status}
-                        onValueChange={(value) => handleStatusChange(lead.id, value)}
-                        disabled={updatingId === lead.id}
-                      >
-                        <SelectTrigger className="w-[200px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="NEW">New</SelectItem>
-                          <SelectItem value="CONTACTED">Contacted</SelectItem>
-                          <SelectItem value="QUALIFIED">Qualified</SelectItem>
-                          <SelectItem value="PROPOSAL">Proposal</SelectItem>
-                          <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
-                          <SelectItem value="CLOSED_WON">Won</SelectItem>
-                          <SelectItem value="CLOSED_LOST">Lost</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {updatingId === lead.id && (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      )}
-                    </div>
-
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(lead.id)}
+                  <div className="flex items-center gap-3">
+                    <Label className="text-sm font-medium">
+                      {isEnglish ? 'Status:' : 'Status:'}
+                    </Label>
+                    <Select
+                      value={lead.status}
+                      onValueChange={(value) => handleStatusChange(lead.id, value)}
+                      disabled={updatingId === lead.id}
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NEW">{isEnglish ? 'New' : 'Baru'}</SelectItem>
+                        <SelectItem value="CONTACTED">{isEnglish ? 'Contacted' : 'Dihubungi'}</SelectItem>
+                        <SelectItem value="QUALIFIED">{isEnglish ? 'Qualified' : 'Layak'}</SelectItem>
+                        <SelectItem value="PROPOSAL">{isEnglish ? 'Proposal' : 'Cadangan'}</SelectItem>
+                        <SelectItem value="NEGOTIATION">{isEnglish ? 'Negotiation' : 'Rundingan'}</SelectItem>
+                        <SelectItem value="CLOSED_WON">{isEnglish ? 'Closed Won' : 'Berjaya'}</SelectItem>
+                        <SelectItem value="CLOSED_LOST">{isEnglish ? 'Closed Lost' : 'Gagal'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {updatingId === lead.id && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -266,4 +298,8 @@ export default function AdminLeadsPage() {
       </div>
     </div>
   )
+}
+
+function Label({ children, className }: { children: React.ReactNode, className?: string }) {
+  return <label className={className}>{children}</label>
 }

@@ -13,44 +13,31 @@ import {
 } from "lucide-react"
 import { api } from "@/lib/api-client"
 
-export default function AdminDashboardPage({ params }: { params: { lang: string } }) {
+export default function AdminDashboardPage() {
   const router = useRouter()
   const [user, setUser] = React.useState<any>(null)
   const [leadStats, setLeadStats] = React.useState<any>(null)
   const [testimonialStats, setTestimonialStats] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
-  const isEnglish = params.lang === 'en'
+  const isEnglish = true // Admin panel is English only
 
-  // Check authentication and fetch statistics
+  // Fetch user profile and statistics
   React.useEffect(() => {
-    const token = localStorage.getItem('authToken')
-    const userStr = localStorage.getItem('user')
-
-    if (!token) {
-      router.push(`/${params.lang}/admin`)
-      return
-    }
-
     let isMounted = true
-    let currentUser: any = null
 
-    if (userStr) {
-      try {
-        currentUser = JSON.parse(userStr)
-        if (isMounted) {
-          setUser(currentUser)
-        }
-      } catch (e) {
-        console.error('Failed to parse user data:', e)
-      }
-    }
-
-    // Fetch statistics immediately after user is loaded
-    async function fetchStats() {
-      if (!currentUser) return
-
+    async function fetchData() {
       try {
         setLoading(true)
+
+        // Fetch user profile from backend (will use httpOnly cookie for auth)
+        const profileResponse = await api.auth.getProfile() as any
+        const userData = profileResponse.data || profileResponse
+
+        if (isMounted) {
+          setUser(userData)
+        }
+
+        // Fetch statistics
         const [leadData, testimonialData] = await Promise.all([
           api.leads.getStats(),
           api.testimonials.getStats()
@@ -61,7 +48,11 @@ export default function AdminDashboardPage({ params }: { params: { lang: string 
           setTestimonialStats(testimonialData)
         }
       } catch (error) {
-        console.error('Failed to fetch stats:', error)
+        console.error('Failed to fetch data:', error)
+        // If unauthorized, redirect to login
+        if ((error as any)?.response?.status === 401) {
+          router.push('/')
+        }
       } finally {
         if (isMounted) {
           setLoading(false)
@@ -69,18 +60,27 @@ export default function AdminDashboardPage({ params }: { params: { lang: string 
       }
     }
 
-    fetchStats()
+    fetchData()
 
     // Cleanup function to prevent state updates after unmount
     return () => {
       isMounted = false
     }
-  }, [params.lang, router])
+  }, [router])
 
-  const handleLogout = () => {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('user')
-    router.push(`/${params.lang}/admin`)
+  const handleLogout = async () => {
+    try {
+      // Call backend logout endpoint to clear cookies
+      await fetch('https://api.amanahbestcredit.com/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include', // Send cookies
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      // Redirect to login page
+      router.push('/')
+    }
   }
 
   if (!user) {
@@ -89,47 +89,47 @@ export default function AdminDashboardPage({ params }: { params: { lang: string 
 
   const menuItems = [
     {
-      title: isEnglish ? 'Lead Management' : 'Pengurusan Lead',
-      description: isEnglish ? 'View and manage loan applications' : 'Lihat dan urus permohonan pinjaman',
+      title: 'Lead Management',
+      description: 'View and manage loan applications',
       icon: Users,
-      href: `/${params.lang}/admin/leads`,
+      href: '/leads',
       color: 'bg-green-500'
     },
     {
-      title: isEnglish ? 'Testimonial Management' : 'Pengurusan Testimoni',
-      description: isEnglish ? 'Review and approve customer testimonials' : 'Semak dan luluskan testimoni pelanggan',
+      title: 'Testimonial Management',
+      description: 'Review and approve customer testimonials',
       icon: MessageSquare,
-      href: `/${params.lang}/admin/testimonials`,
+      href: '/testimonials',
       color: 'bg-gradient-to-r from-logo-gold to-logo-darkGold'
     },
     {
-      title: isEnglish ? 'Reports & Analytics' : 'Laporan & Analitik',
-      description: isEnglish ? 'View analytics and reports' : 'Lihat analitik dan laporan',
+      title: 'Reports & Analytics',
+      description: 'View analytics and reports',
       icon: BarChart3,
-      href: `/${params.lang}/admin/reports`,
+      href: '/reports',
       color: 'bg-purple-500'
     },
     {
-      title: isEnglish ? 'Admin Users' : 'Pengguna Admin',
-      description: isEnglish ? 'Manage admin users and roles' : 'Urus pengguna admin dan peranan',
+      title: 'Admin Users',
+      description: 'Manage admin users and roles',
       icon: ShieldCheck,
-      href: `/${params.lang}/admin/users`,
+      href: '/users',
       color: 'bg-blue-500',
       adminOnly: true
     },
     {
-      title: isEnglish ? 'System Settings' : 'Tetapan Sistem',
-      description: isEnglish ? 'Configure system preferences' : 'Konfigurasi keutamaan sistem',
+      title: 'System Settings',
+      description: 'Configure system preferences',
       icon: Settings,
-      href: `/${params.lang}/admin/settings`,
+      href: '/settings',
       color: 'bg-gray-600',
       adminOnly: true
     },
     {
-      title: isEnglish ? 'Audit Logs' : 'Log Audit',
-      description: isEnglish ? 'Monitor system activity' : 'Pantau aktiviti sistem',
+      title: 'Audit Logs',
+      description: 'Monitor system activity',
       icon: Activity,
-      href: `/${params.lang}/admin/logs`,
+      href: '/logs',
       color: 'bg-orange-500',
       adminOnly: true
     }
@@ -145,31 +145,31 @@ export default function AdminDashboardPage({ params }: { params: { lang: string 
 
   const quickActions = [
     {
-      title: isEnglish ? 'Add New Lead' : 'Tambah Lead Baru',
-      description: isEnglish ? 'Create a new lead manually' : 'Cipta lead baru secara manual',
+      title: 'Add New Lead',
+      description: 'Create a new lead manually',
       icon: UserPlus,
-      href: `/${params.lang}/admin/leads?action=new`,
+      href: '/leads?action=new',
       color: 'text-green-600 bg-green-50'
     },
     {
-      title: isEnglish ? 'View Reports' : 'Lihat Laporan',
-      description: isEnglish ? 'Access analytics dashboard' : 'Akses papan pemuka analitik',
+      title: 'View Reports',
+      description: 'Access analytics dashboard',
       icon: BarChart3,
-      href: `/${params.lang}/admin/reports`,
+      href: '/reports',
       color: 'text-purple-600 bg-purple-50'
     },
     {
-      title: isEnglish ? 'Review Testimonials' : 'Semak Testimoni',
-      description: isEnglish ? 'Approve pending testimonials' : 'Luluskan testimoni tertunda',
+      title: 'Review Testimonials',
+      description: 'Approve pending testimonials',
       icon: MessageSquare,
-      href: `/${params.lang}/admin/testimonials?filter=pending`,
+      href: '/testimonials?filter=pending',
       color: 'text-yellow-600 bg-yellow-50'
     },
     {
-      title: isEnglish ? 'System Settings' : 'Tetapan Sistem',
-      description: isEnglish ? 'Configure system' : 'Konfigurasi sistem',
+      title: 'System Settings',
+      description: 'Configure system',
       icon: Settings,
-      href: `/${params.lang}/admin/settings`,
+      href: '/settings',
       color: 'text-blue-600 bg-blue-50',
       adminOnly: true
     }
@@ -236,10 +236,10 @@ export default function AdminDashboardPage({ params }: { params: { lang: string 
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {isEnglish ? 'Admin Dashboard' : 'Papan Pemuka Admin'}
+                Admin Dashboard
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                {isEnglish ? 'Welcome back,' : 'Selamat kembali,'} {user.name || user.email}
+                Welcome back, {user.name || user.email}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -248,15 +248,15 @@ export default function AdminDashboardPage({ params }: { params: { lang: string 
                   {user.role}
                 </Badge>
               )}
-              <Link href={`/${params.lang}`}>
+              <a href="https://amanahbestcredit.com" target="_blank" rel="noopener noreferrer">
                 <Button variant="outline">
                   <Eye className="h-4 w-4 mr-2" />
-                  {isEnglish ? 'View Site' : 'Lihat Laman'}
+                  View Site
                 </Button>
-              </Link>
+              </a>
               <Button variant="destructive" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
-                {isEnglish ? 'Logout' : 'Log Keluar'}
+                Logout
               </Button>
             </div>
           </div>
@@ -417,9 +417,9 @@ export default function AdminDashboardPage({ params }: { params: { lang: string 
                     {isEnglish ? 'Latest actions in the system' : 'Tindakan terkini dalam sistem'}
                   </CardDescription>
                 </div>
-                <Link href={`/${params.lang}/admin/logs`}>
+                <Link href="/logs">
                   <Button variant="ghost" size="sm">
-                    {isEnglish ? 'View All' : 'Lihat Semua'}
+                    View All
                     <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
                 </Link>
@@ -502,10 +502,10 @@ export default function AdminDashboardPage({ params }: { params: { lang: string 
                 </div>
 
                 <div className="pt-4 border-t">
-                  <Link href={`/${params.lang}/admin/settings`}>
+                  <Link href="/settings">
                     <Button variant="outline" className="w-full">
                       <Settings className="h-4 w-4 mr-2" />
-                      {isEnglish ? 'System Settings' : 'Tetapan Sistem'}
+                      System Settings
                     </Button>
                   </Link>
                 </div>

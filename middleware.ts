@@ -10,8 +10,8 @@ const authRoutes = ['/']
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Get the auth_token cookie (set by backend)
-  const authToken = request.cookies.get('auth_token')
+  // Get the authToken cookie (set by frontend)
+  const authToken = request.cookies.get('authToken')
   const isAuthenticated = !!authToken
 
   // Check if the current route is protected

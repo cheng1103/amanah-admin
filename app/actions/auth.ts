@@ -17,10 +17,10 @@ export async function setAuthCookie(token: string) {
   cookieStore.set({
     name: 'authToken',
     value: token,
-    httpOnly: true,  // ✅ JavaScript cannot access this
+    httpOnly: false,  // ⚠️ Must be false so API client can read it
     secure: process.env.NODE_ENV === 'production',  // ✅ HTTPS only in production
     sameSite: 'strict',  // ✅ CSRF protection
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 1, // 1 day
     path: '/',
   })
 }

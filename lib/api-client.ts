@@ -24,12 +24,21 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
-// ✅ CSRF Protection: Add CSRF token to state-changing requests
+// ✅ Add Authorization token to all requests
 apiClient.interceptors.request.use((config) => {
-  // Only add CSRF token for state-changing methods
-  if (['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '')) {
-    // Get CSRF token from cookie
-    if (typeof document !== 'undefined') {
+  // Get auth token from cookie
+  if (typeof document !== 'undefined') {
+    const authToken = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('authToken='))
+      ?.split('=')[1];
+
+    if (authToken) {
+      config.headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
+    // Add CSRF token for state-changing methods
+    if (['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '')) {
       const csrfToken = document.cookie
         .split('; ')
         .find(row => row.startsWith('XSRF-TOKEN='))

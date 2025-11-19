@@ -53,8 +53,10 @@ export default function AdminLoginPage() {
         console.log('✅ Login successful! Token received.')
         console.log('User:', data.user)
 
-        // Backend already set httpOnly cookie (auth_token)
-        // Just store user info for UI display
+        // Store auth token in frontend cookie
+        await setAuthCookie(data.access_token)
+
+        // Store user info for UI display
         if (data.user) {
           await setUserDataCookie(data.user)
         }

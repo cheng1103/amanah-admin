@@ -38,7 +38,9 @@ export default function AdminLeadsPage() {
 
     try {
       const response = await api.leads.getAll()
-      setLeads(response)
+      // Handle different API response formats
+      const leadsData = Array.isArray(response) ? response : (response.data || [])
+      setLeads(leadsData)
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
       setError(error.response?.data?.message || 'Failed to load leads')

@@ -59,7 +59,9 @@ export default function AdminLogsPage() {
       if (statusFilter !== "all") params.status = statusFilter
 
       const response = await api.auditLogs.getAll(params)
-      setLogs(response.data || response)
+      // Handle different API response formats
+      const logsData = Array.isArray(response) ? response : (response.data || [])
+      setLogs(logsData)
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
       if (!silent) {

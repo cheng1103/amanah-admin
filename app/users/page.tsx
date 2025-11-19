@@ -42,7 +42,9 @@ export default function AdminUsersPage() {
 
     try {
       const response = await api.adminUsers.getAll()
-      setUsers(response.data || response)
+      // Handle different API response formats
+      const usersData = Array.isArray(response) ? response : (response.data || [])
+      setUsers(usersData)
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
       setError(error.response?.data?.message || 'Failed to load users')

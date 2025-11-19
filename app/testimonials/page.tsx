@@ -39,8 +39,9 @@ export default function AdminTestimonialsPage() {
         api.testimonials.getPending(),
         api.testimonials.getApproved()
       ])
-      setPending(pendingData)
-      setApproved(approvedData)
+      // Handle different API response formats
+      setPending(Array.isArray(pendingData) ? pendingData : (pendingData.data || []))
+      setApproved(Array.isArray(approvedData) ? approvedData : (approvedData.data || []))
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
       setError(error.response?.data?.message || 'Failed to load testimonials')

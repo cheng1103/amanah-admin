@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { api } from "@/lib/api-client"
-import { setAuthCookie, setUserDataCookie } from "@/app/actions/auth"
+// Removed server actions import - using direct cookie setting instead
 import { Loader2, Shield } from "lucide-react"
 
 interface LoginResponse {
@@ -53,17 +53,22 @@ export default function AdminLoginPage() {
         console.log('✅ Login successful! Token received.')
         console.log('User:', data.user)
 
-        // Store auth token in frontend cookie
-        await setAuthCookie(data.access_token)
+        // Store auth token in cookie (client-side)
+        const maxAge = 60 * 60 * 24 // 24 hours
+        document.cookie = `authToken=${data.access_token}; path=/; max-age=${maxAge}; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
 
-        // Store user info for UI display
+        // Store user info in cookie for UI display
         if (data.user) {
-          await setUserDataCookie(data.user)
+          document.cookie = `userData=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${maxAge}; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
         }
 
-        // Redirect to dashboard
+        console.log('✅ Cookies set successfully')
         console.log('Redirecting to dashboard...')
-        router.push(`/dashboard`)
+
+        // Small delay to ensure cookies are set before redirect
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 100)
       } else {
         console.error('No access_token in response. Full response:', response)
         // Show detailed error on page

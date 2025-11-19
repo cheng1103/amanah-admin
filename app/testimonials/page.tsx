@@ -36,8 +36,8 @@ export default function AdminTestimonialsPage() {
 
     try {
       const [pendingData, approvedData] = await Promise.all([
-        api.testimonials.getPending(),
-        api.testimonials.getApproved()
+        api.testimonials.getPending() as any,
+        api.testimonials.getApproved() as any
       ])
       // Handle different API response formats
       setPending(Array.isArray(pendingData) ? pendingData : (pendingData.data || []))

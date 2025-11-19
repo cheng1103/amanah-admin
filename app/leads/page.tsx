@@ -37,7 +37,7 @@ export default function AdminLeadsPage() {
     setError("")
 
     try {
-      const response = await api.leads.getAll()
+      const response = await api.leads.getAll() as any
       // Handle different API response formats
       const leadsData = Array.isArray(response) ? response : (response.data || [])
       setLeads(leadsData)

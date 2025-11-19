@@ -41,7 +41,7 @@ export default function AdminUsersPage() {
     setError("")
 
     try {
-      const response = await api.adminUsers.getAll()
+      const response = await api.adminUsers.getAll() as any
       // Handle different API response formats
       const usersData = Array.isArray(response) ? response : (response.data || [])
       setUsers(usersData)

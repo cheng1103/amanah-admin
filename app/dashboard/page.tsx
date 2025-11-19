@@ -12,6 +12,7 @@ import {
   AlertTriangle, Activity, UserPlus, FilePlus, Plus, ArrowRight
 } from "lucide-react"
 import { api } from "@/lib/api-client"
+import { AdminSidebar } from "@/components/admin-sidebar"
 
 export default function AdminDashboardPage() {
   const router = useRouter()
@@ -245,42 +246,12 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Admin Dashboard
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Welcome back, {user.name || user.email}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {user.role && (
-                <Badge className="bg-primary-100 text-primary-800">
-                  {user.role}
-                </Badge>
-              )}
-              <a href="https://amanahbestcredit.com" target="_blank" rel="noopener noreferrer">
-                <Button variant="outline">
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Site
-                </Button>
-              </a>
-              <Button variant="destructive" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <AdminSidebar user={user} />
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 overflow-y-auto md:ml-64">
+        <div className="px-4 sm:px-6 lg:px-8 py-8 pt-20 md:pt-8">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card>
@@ -565,7 +536,8 @@ export default function AdminDashboardPage() {
             })}
           </div>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

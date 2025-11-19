@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,8 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, ArrowLeft, Save, Settings as SettingsIcon } from "lucide-react"
 import { api } from "@/lib/api-client"
+import { AdminSidebar } from "@/components/admin-sidebar"
 
 export default function SettingsPage() {
+  const router = useRouter()
+  const [user, setUser] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState("")
@@ -27,18 +31,28 @@ export default function SettingsPage() {
   })
 
   React.useEffect(() => {
-    async function fetchSettings() {
+    async function fetchData() {
       try {
-        const response = await api.settings.get()
-        setSettings(response.data || response)
+        const [profileResponse, settingsResponse] = await Promise.all([
+          api.auth.getProfile() as any,
+          api.settings.get()
+        ])
+        const userData = profileResponse.data || profileResponse
+        setUser(userData)
+        setSettings(settingsResponse.data || settingsResponse)
       } catch (err) {
-        setError('Failed to load settings')
+        const error = err as any
+        if (error?.response?.status === 401) {
+          router.push('/')
+        } else {
+          setError('Failed to load settings')
+        }
       } finally {
         setLoading(false)
       }
     }
-    fetchSettings()
-  }, [])
+    fetchData()
+  }, [router])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,25 +81,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">System Settings</h1>
-              <p className="text-sm text-gray-600 mt-1">Configure system preferences</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <AdminSidebar user={user} />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 overflow-y-auto md:ml-64">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-20 md:pt-8">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">System Settings</h1>
+            <p className="text-sm text-gray-600 mt-1">Configure system preferences</p>
+          </div>
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-red-800">{error}</p>
@@ -219,7 +223,8 @@ export default function SettingsPage() {
             </Button>
           </div>
         </form>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

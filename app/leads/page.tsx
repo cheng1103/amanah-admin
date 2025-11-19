@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { api } from "@/lib/api-client"
 import { Loader2, ArrowLeft, Mail, Phone, DollarSign, Briefcase, RefreshCw, Trash2 } from "lucide-react"
+import { AdminSidebar } from "@/components/admin-sidebar"
 
 interface Lead {
   id: string
@@ -27,6 +28,7 @@ interface Lead {
 
 export default function AdminLeadsPage() {
   const router = useRouter()
+  const [user, setUser] = React.useState<any>(null)
   const [leads, setLeads] = React.useState<Lead[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState("")
@@ -50,8 +52,21 @@ export default function AdminLeadsPage() {
   }, [])
 
   React.useEffect(() => {
+    async function fetchData() {
+      try {
+        const profileResponse = await api.auth.getProfile() as any
+        const userData = profileResponse.data || profileResponse
+        setUser(userData)
+      } catch (error) {
+        console.error('Failed to fetch user:', error)
+        if ((error as any)?.response?.status === 401) {
+          router.push('/')
+        }
+      }
+    }
+    fetchData()
     fetchLeads()
-  }, [fetchLeads])
+  }, [fetchLeads, router])
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     setUpdatingId(leadId)
@@ -133,31 +148,21 @@ export default function AdminLeadsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Lead Management</h1>
-                <p className="text-sm text-gray-600 mt-1">{leads.length} total leads</p>
-              </div>
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <AdminSidebar user={user} />
+
+      <main className="flex-1 overflow-y-auto md:ml-64">
+        <div className="px-4 sm:px-6 lg:px-8 py-8 pt-20 md:pt-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Lead Management</h1>
+              <p className="text-sm text-gray-600 mt-1">{leads.length} total leads</p>
             </div>
             <Button onClick={fetchLeads} variant="outline">
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
           </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-red-800">{error}</p>
@@ -265,7 +270,8 @@ export default function AdminLeadsPage() {
             ))}
           </div>
         )}
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

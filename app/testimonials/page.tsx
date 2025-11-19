@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { api } from "@/lib/api-client"
 import { Loader2, ArrowLeft, Star, CheckCircle, XCircle, Eye, RefreshCw, Trash2 } from "lucide-react"
 import { AdminSidebar } from "@/components/admin-sidebar"
+import { TableSkeleton } from "@/components/loading-skeletons"
 
 interface Testimonial {
   id: string
@@ -79,7 +81,7 @@ export default function AdminTestimonialsPage() {
       await fetchTestimonials()
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to approve testimonial')
+      toast.error(error.response?.data?.message || 'Failed to approve testimonial')
     } finally {
       setActioningId(null)
     }
@@ -94,7 +96,7 @@ export default function AdminTestimonialsPage() {
       setPending(prev => prev.filter(t => t.id !== id))
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to reject testimonial')
+      toast.error(error.response?.data?.message || 'Failed to reject testimonial')
     } finally {
       setActioningId(null)
     }
@@ -109,7 +111,7 @@ export default function AdminTestimonialsPage() {
       ))
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to toggle featured status')
+      toast.error(error.response?.data?.message || 'Failed to toggle featured status')
     } finally {
       setActioningId(null)
     }
@@ -127,7 +129,7 @@ export default function AdminTestimonialsPage() {
       }
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to delete testimonial')
+      toast.error(error.response?.data?.message || 'Failed to delete testimonial')
     }
   }
 
@@ -238,8 +240,17 @@ export default function AdminTestimonialsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex h-screen bg-gray-50 overflow-hidden">
+        <AdminSidebar user={user} />
+        <main className="flex-1 overflow-y-auto md:ml-64">
+          <div className="px-4 sm:px-6 lg:px-8 py-8 pt-20 md:pt-8">
+            <div className="mb-6">
+              <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-2" />
+              <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+            </div>
+            <TableSkeleton rows={6} />
+          </div>
+        </main>
       </div>
     )
   }

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -168,7 +169,7 @@ export default function AdminReportsPage() {
       document.body.removeChild(a)
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to export report')
+      toast.error(error.response?.data?.message || 'Failed to export report')
     } finally {
       setExporting(false)
     }

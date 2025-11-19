@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { api } from "@/lib/api-client"
 import { Loader2, ArrowLeft, Mail, Phone, DollarSign, Briefcase, RefreshCw, Trash2 } from "lucide-react"
 import { AdminSidebar } from "@/components/admin-sidebar"
+import { TableSkeleton } from "@/components/loading-skeletons"
 
 interface Lead {
   id: string
@@ -92,7 +94,7 @@ export default function AdminLeadsPage() {
         ))
       }
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to update status')
+      toast.error(error.response?.data?.message || 'Failed to update status')
     } finally {
       setUpdatingId(null)
     }
@@ -106,7 +108,7 @@ export default function AdminLeadsPage() {
       setLeads(prev => prev.filter(lead => lead.id !== leadId))
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to delete lead')
+      toast.error(error.response?.data?.message || 'Failed to delete lead')
     }
   }
 
@@ -169,7 +171,9 @@ export default function AdminLeadsPage() {
           </div>
         )}
 
-        {leads.length === 0 ? (
+        {loading ? (
+          <TableSkeleton rows={8} />
+        ) : leads.length === 0 ? (
           <Card>
             <CardContent className="py-12">
               <div className="text-center text-muted-foreground">

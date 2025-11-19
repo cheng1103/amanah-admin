@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { api } from "@/lib/api-client"
 import { AdminSidebar } from "@/components/admin-sidebar"
+import { DashboardSkeleton } from "@/components/loading-skeletons"
 
 export default function AdminDashboardPage() {
   const router = useRouter()
@@ -100,8 +101,21 @@ export default function AdminDashboardPage() {
     }
   }
 
-  if (!user) {
-    return null
+  if (loading || !user) {
+    return (
+      <div className="flex h-screen bg-gray-50 overflow-hidden">
+        <AdminSidebar user={user} />
+        <main className="flex-1 overflow-y-auto md:ml-64">
+          <div className="px-4 sm:px-6 lg:px-8 py-8 pt-20 md:pt-8">
+            <div className="mb-6">
+              <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2" />
+              <div className="h-4 w-64 bg-gray-200 rounded animate-pulse" />
+            </div>
+            <DashboardSkeleton />
+          </div>
+        </main>
+      </div>
+    )
   }
 
   const menuItems = [

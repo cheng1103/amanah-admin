@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -92,7 +93,7 @@ export default function AdminUsersPage() {
         ))
       }
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to update status')
+      toast.error(error.response?.data?.message || 'Failed to update status')
     } finally {
       setActioningId(null)
     }
@@ -114,7 +115,7 @@ export default function AdminUsersPage() {
       })
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to create user')
+      toast.error(error.response?.data?.message || 'Failed to create user')
     }
   }
 
@@ -126,7 +127,7 @@ export default function AdminUsersPage() {
       setUsers(prev => prev.filter(u => u.id !== userId))
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } }
-      alert(error.response?.data?.message || 'Failed to delete user')
+      toast.error(error.response?.data?.message || 'Failed to delete user')
     }
   }
 

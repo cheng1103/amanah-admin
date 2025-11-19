@@ -50,16 +50,17 @@ export default function AdminLoginPage() {
       console.log('Extracted data:', data)
 
       if (data.access_token) {
-        console.log('Access token found, setting cookie')
-        // ✅ Use Server Actions for httpOnly cookies (SECURE)
-        await setAuthCookie(data.access_token)
+        console.log('✅ Login successful! Token received.')
+        console.log('User:', data.user)
 
-        // Store user info in non-httpOnly cookie (for UI display only)
+        // Backend already set httpOnly cookie (auth_token)
+        // Just store user info for UI display
         if (data.user) {
           await setUserDataCookie(data.user)
         }
 
         // Redirect to dashboard
+        console.log('Redirecting to dashboard...')
         router.push(`/dashboard`)
       } else {
         console.error('No access_token in response. Full response:', response)

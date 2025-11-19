@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
   ArrowLeft, Download, Printer, RefreshCw, TrendingUp, TrendingDown,
-  Users, DollarSign, FileText, CheckCircle, Calendar, Loader2
+  Users, DollarSign, FileText, CheckCircle, Loader2
 } from "lucide-react"
-import { Toast } from "@/components/ui/toast"
+import { api } from "@/lib/api-client"
 
 interface MetricCard {
   title: string
@@ -28,175 +28,147 @@ interface ChartData {
   color?: string
 }
 
+interface TopProduct {
+  name: string
+  leads: number
+  conversion: string
+  revenue: string
+}
+
 export default function AdminReportsPage() {
   const router = useRouter()
-  const [user, setUser] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState("")
   const [refreshing, setRefreshing] = React.useState(false)
+  const [exporting, setExporting] = React.useState(false)
   const [dateRange, setDateRange] = React.useState({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   })
-  const [toast, setToast] = React.useState<{show: boolean, title: string, description: string, variant: "success" | "error"}>({
-    show: false,
-    title: "",
-    description: "",
-    variant: "success"
-  })
 
-
-  // Mock data
   const [metrics, setMetrics] = React.useState<MetricCard[]>([])
   const [leadSources, setLeadSources] = React.useState<ChartData[]>([])
   const [loanTypes, setLoanTypes] = React.useState<ChartData[]>([])
   const [monthlyTrends, setMonthlyTrends] = React.useState<ChartData[]>([])
-  const [topProducts, setTopProducts] = React.useState<any[]>([])
+  const [topProducts, setTopProducts] = React.useState<TopProduct[]>([])
 
-  // Check authentication
-  React.useEffect(() => {
-    const token = localStorage.getItem('authToken')
-    const userStr = localStorage.getItem('user')
-
-    if (!token) {
-      router.push(`/${params.lang}/admin`)
-      return
-    }
-
-    if (userStr) {
-      try {
-        setUser(JSON.parse(userStr))
-      } catch (e) {
-        router.push(`/${params.lang}/admin`)
-      }
-    }
-  }, [params.lang, router])
-
-  // Fetch data
-  React.useEffect(() => {
-    if (!user) return
-    fetchReportData()
-  }, [user, dateRange])
-
-  const fetchReportData = async () => {
+  const fetchReportData = React.useCallback(async (silent = false) => {
     try {
-      setLoading(true)
-      // Mock data - replace with actual API calls
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      if (!silent) setLoading(true)
+      setError("")
 
-      setMetrics([
-        {
-          title: isEnglish ? 'Total Leads' : 'Jumlah Lead',
-          value: '1,247',
-          change: '+12.5%',
-          trend: 'up',
-          icon: Users,
-          color: 'bg-blue-500'
-        },
-        {
-          title: isEnglish ? 'Conversion Rate' : 'Kadar Penukaran',
-          value: '32.8%',
-          change: '+5.2%',
-          trend: 'up',
-          icon: TrendingUp,
-          color: 'bg-green-500'
-        },
-        {
-          title: isEnglish ? 'Total Revenue' : 'Jumlah Hasil',
-          value: 'RM 2.4M',
-          change: '+18.3%',
-          trend: 'up',
-          icon: DollarSign,
-          color: 'bg-yellow-500'
-        },
-        {
-          title: isEnglish ? 'Active Loans' : 'Pinjaman Aktif',
-          value: '342',
-          change: '-2.1%',
-          trend: 'down',
-          icon: FileText,
-          color: 'bg-purple-500'
-        }
+      const params = {
+        startDate: dateRange.start,
+        endDate: dateRange.end
+      }
+
+      const [metricsData, sourcesData, typesData, trendsData, productsData] = await Promise.all([
+        api.reports.getMetrics(params),
+        api.reports.getLeadSources(params),
+        api.reports.getLoanTypes(params),
+        api.reports.getMonthlyTrends({ months: 6 }),
+        api.reports.getTopProducts({ limit: 5 })
       ])
 
-      setLeadSources([
-        { label: isEnglish ? 'Website' : 'Laman Web', value: 45, color: '#3b82f6' },
-        { label: isEnglish ? 'Facebook' : 'Facebook', value: 25, color: '#10b981' },
-        { label: isEnglish ? 'Google Ads' : 'Iklan Google', value: 20, color: '#f59e0b' },
-        { label: isEnglish ? 'Referral' : 'Rujukan', value: 10, color: '#8b5cf6' }
-      ])
+      // Process metrics data
+      if (metricsData.data || metricsData) {
+        const data = metricsData.data || metricsData
+        setMetrics([
+          {
+            title: 'Total Leads',
+            value: data.totalLeads?.toString() || '0',
+            change: data.leadsChange || '+0%',
+            trend: data.leadsChange?.startsWith('+') ? 'up' : 'down',
+            icon: Users,
+            color: 'bg-blue-500'
+          },
+          {
+            title: 'Conversion Rate',
+            value: data.conversionRate || '0%',
+            change: data.conversionChange || '+0%',
+            trend: data.conversionChange?.startsWith('+') ? 'up' : 'down',
+            icon: TrendingUp,
+            color: 'bg-green-500'
+          },
+          {
+            title: 'Total Revenue',
+            value: data.totalRevenue || 'RM 0',
+            change: data.revenueChange || '+0%',
+            trend: data.revenueChange?.startsWith('+') ? 'up' : 'down',
+            icon: DollarSign,
+            color: 'bg-yellow-500'
+          },
+          {
+            title: 'Active Loans',
+            value: data.activeLoans?.toString() || '0',
+            change: data.loansChange || '+0%',
+            trend: data.loansChange?.startsWith('+') ? 'up' : 'down',
+            icon: FileText,
+            color: 'bg-purple-500'
+          }
+        ])
+      }
 
-      setLoanTypes([
-        { label: isEnglish ? 'Personal Loan' : 'Pinjaman Peribadi', value: 40, color: '#3b82f6' },
-        { label: isEnglish ? 'Business Loan' : 'Pinjaman Perniagaan', value: 30, color: '#10b981' },
-        { label: isEnglish ? 'Housing Loan' : 'Pinjaman Perumahan', value: 20, color: '#f59e0b' },
-        { label: isEnglish ? 'Vehicle Loan' : 'Pinjaman Kenderaan', value: 10, color: '#8b5cf6' }
-      ])
-
-      setMonthlyTrends([
-        { label: 'Jan', value: 65 },
-        { label: 'Feb', value: 75 },
-        { label: 'Mar', value: 85 },
-        { label: 'Apr', value: 78 },
-        { label: 'May', value: 90 },
-        { label: 'Jun', value: 95 }
-      ])
-
-      setTopProducts([
-        { name: isEnglish ? 'Personal Loan - Fast Track' : 'Pinjaman Peribadi - Laluan Pantas', leads: 342, conversion: '35.2%', revenue: 'RM 850K' },
-        { name: isEnglish ? 'Business Expansion Loan' : 'Pinjaman Pengembangan Perniagaan', leads: 287, conversion: '28.5%', revenue: 'RM 720K' },
-        { name: isEnglish ? 'Home Renovation Loan' : 'Pinjaman Pengubahsuaian Rumah', leads: 198, conversion: '32.1%', revenue: 'RM 490K' },
-        { name: isEnglish ? 'Education Loan' : 'Pinjaman Pendidikan', leads: 156, conversion: '42.3%', revenue: 'RM 380K' }
-      ])
-
-    } catch (error) {
-      showToast(
-        isEnglish ? "Error" : "Ralat",
-        isEnglish ? "Failed to load report data" : "Gagal memuatkan data laporan",
-        "error"
-      )
+      // Set chart data
+      setLeadSources((sourcesData.data || sourcesData) as ChartData[])
+      setLoanTypes((typesData.data || typesData) as ChartData[])
+      setMonthlyTrends((trendsData.data || trendsData) as ChartData[])
+      setTopProducts((productsData.data || productsData) as TopProduct[])
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } }
+      if (!silent) {
+        setError(error.response?.data?.message || 'Failed to load report data')
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }
+  }, [dateRange])
 
-  const showToast = (title: string, description: string, variant: "success" | "error") => {
-    setToast({ show: true, title, description, variant })
-    setTimeout(() => setToast({ show: false, title: "", description: "", variant: "success" }), 3000)
-  }
+  React.useEffect(() => {
+    fetchReportData()
+  }, [fetchReportData])
 
   const handleRefresh = async () => {
     setRefreshing(true)
     await fetchReportData()
     setRefreshing(false)
-    showToast(
-      isEnglish ? "Success" : "Berjaya",
-      isEnglish ? "Report data refreshed" : "Data laporan dikemaskini",
-      "success"
-    )
   }
 
-  const handleExportCSV = () => {
-    showToast(
-      isEnglish ? "Success" : "Berjaya",
-      isEnglish ? "CSV export started" : "Eksport CSV dimulakan",
-      "success"
-    )
-  }
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    setExporting(true)
+    try {
+      const params = {
+        startDate: dateRange.start,
+        endDate: dateRange.end
+      }
 
-  const handleExportPDF = () => {
-    showToast(
-      isEnglish ? "Success" : "Berjaya",
-      isEnglish ? "PDF export started" : "Eksport PDF dimulakan",
-      "success"
-    )
+      const blob = await api.reports.export(format, params)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `reports-${new Date().toISOString().split('T')[0]}.${format}`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } }
+      alert(error.response?.data?.message || 'Failed to export report')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const handlePrint = () => {
     window.print()
   }
 
-  if (!user) {
-    return null
+  if (loading && metrics.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
@@ -206,18 +178,15 @@ export default function AdminReportsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <Link href={`/dashboard`}>
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-5 w-5" />
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
                 </Button>
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {isEnglish ? 'Reports & Analytics' : 'Laporan & Analitik'}
-                </h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  {isEnglish ? 'View performance metrics and analytics' : 'Lihat metrik prestasi dan analitik'}
-                </p>
+                <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
+                <p className="text-sm text-gray-600 mt-1">View performance metrics and analytics</p>
               </div>
             </div>
 
@@ -237,24 +206,24 @@ export default function AdminReportsPage() {
                 />
               </div>
 
-              <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+              <Button variant="outline" onClick={handleRefresh} disabled={refreshing} size="sm">
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                {isEnglish ? 'Refresh' : 'Muat Semula'}
+                Refresh
               </Button>
 
-              <Button variant="outline" onClick={handleExportCSV}>
+              <Button variant="outline" onClick={() => handleExport('csv')} disabled={exporting} size="sm">
                 <Download className="h-4 w-4 mr-2" />
                 CSV
               </Button>
 
-              <Button variant="outline" onClick={handleExportPDF}>
+              <Button variant="outline" onClick={() => handleExport('pdf')} disabled={exporting} size="sm">
                 <Download className="h-4 w-4 mr-2" />
                 PDF
               </Button>
 
-              <Button variant="outline" onClick={handlePrint}>
+              <Button variant="outline" onClick={handlePrint} size="sm">
                 <Printer className="h-4 w-4 mr-2" />
-                {isEnglish ? 'Print' : 'Cetak'}
+                Print
               </Button>
             </div>
           </div>
@@ -263,9 +232,15 @@ export default function AdminReportsPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
           <>
@@ -289,9 +264,7 @@ export default function AdminReportsPage() {
                             <span className={`text-sm font-medium ${metric.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
                               {metric.change}
                             </span>
-                            <span className="text-sm text-gray-500 ml-1">
-                              {isEnglish ? 'vs last period' : 'berbanding tempoh lepas'}
-                            </span>
+                            <span className="text-sm text-gray-500 ml-1">vs last period</span>
                           </div>
                         </div>
                         <div className={`h-12 w-12 rounded-lg ${metric.color} flex items-center justify-center flex-shrink-0`}>
@@ -309,92 +282,100 @@ export default function AdminReportsPage() {
               {/* Lead Source Breakdown */}
               <Card>
                 <CardHeader>
-                  <CardTitle>{isEnglish ? 'Lead Source Breakdown' : 'Pecahan Sumber Lead'}</CardTitle>
-                  <CardDescription>
-                    {isEnglish ? 'Distribution of leads by source' : 'Taburan lead mengikut sumber'}
-                  </CardDescription>
+                  <CardTitle>Lead Source Breakdown</CardTitle>
+                  <CardDescription>Distribution of leads by source</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {leadSources.map((source, index) => {
-                      const percentage = source.value
-                      return (
-                        <div key={index}>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-700">{source.label}</span>
-                            <span className="text-sm font-semibold text-gray-900">{percentage}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="h-2 rounded-full transition-all"
-                              style={{
-                                width: `${percentage}%`,
-                                backgroundColor: source.color
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <div className="mt-6 grid grid-cols-2 gap-4">
-                    {leadSources.map((source, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: source.color }}
-                        />
-                        <span className="text-xs text-gray-600">{source.label}</span>
+                  {leadSources.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">No data available</div>
+                  ) : (
+                    <>
+                      <div className="space-y-4">
+                        {leadSources.map((source, index) => {
+                          const percentage = source.value
+                          return (
+                            <div key={index}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-700">{source.label}</span>
+                                <span className="text-sm font-semibold text-gray-900">{percentage}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="h-2 rounded-full transition-all"
+                                  style={{
+                                    width: `${percentage}%`,
+                                    backgroundColor: source.color || '#3b82f6'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="mt-6 grid grid-cols-2 gap-4">
+                        {leadSources.map((source, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: source.color || '#3b82f6' }}
+                            />
+                            <span className="text-xs text-gray-600">{source.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Loan Type Distribution */}
               <Card>
                 <CardHeader>
-                  <CardTitle>{isEnglish ? 'Loan Type Distribution' : 'Taburan Jenis Pinjaman'}</CardTitle>
-                  <CardDescription>
-                    {isEnglish ? 'Breakdown by loan type' : 'Pecahan mengikut jenis pinjaman'}
-                  </CardDescription>
+                  <CardTitle>Loan Type Distribution</CardTitle>
+                  <CardDescription>Breakdown by loan type</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {loanTypes.map((type, index) => {
-                      const percentage = type.value
-                      return (
-                        <div key={index}>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-700">{type.label}</span>
-                            <span className="text-sm font-semibold text-gray-900">{percentage}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="h-2 rounded-full transition-all"
-                              style={{
-                                width: `${percentage}%`,
-                                backgroundColor: type.color
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <div className="mt-6 grid grid-cols-2 gap-4">
-                    {loanTypes.map((type, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: type.color }}
-                        />
-                        <span className="text-xs text-gray-600">{type.label}</span>
+                  {loanTypes.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">No data available</div>
+                  ) : (
+                    <>
+                      <div className="space-y-4">
+                        {loanTypes.map((type, index) => {
+                          const percentage = type.value
+                          return (
+                            <div key={index}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-700">{type.label}</span>
+                                <span className="text-sm font-semibold text-gray-900">{percentage}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="h-2 rounded-full transition-all"
+                                  style={{
+                                    width: `${percentage}%`,
+                                    backgroundColor: type.color || '#10b981'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="mt-6 grid grid-cols-2 gap-4">
+                        {loanTypes.map((type, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: type.color || '#10b981' }}
+                            />
+                            <span className="text-xs text-gray-600">{type.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -402,95 +383,91 @@ export default function AdminReportsPage() {
             {/* Monthly Trends */}
             <Card className="mb-8">
               <CardHeader>
-                <CardTitle>{isEnglish ? 'Monthly Trends' : 'Trend Bulanan'}</CardTitle>
-                <CardDescription>
-                  {isEnglish ? 'Lead volume over the past 6 months' : 'Jumlah lead sepanjang 6 bulan lepas'}
-                </CardDescription>
+                <CardTitle>Monthly Trends</CardTitle>
+                <CardDescription>Lead volume over the past 6 months</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-end justify-between h-64 gap-4">
-                  {monthlyTrends.map((trend, index) => {
-                    const maxValue = Math.max(...monthlyTrends.map(t => t.value))
-                    const heightPercentage = (trend.value / maxValue) * 100
-                    return (
-                      <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                        <div className="text-sm font-semibold text-gray-900">{trend.value}</div>
-                        <div
-                          className="w-full bg-gradient-to-t from-primary-600 to-primary-400 rounded-t-lg transition-all hover:opacity-80 cursor-pointer"
-                          style={{ height: `${heightPercentage}%`, minHeight: '20px' }}
-                          title={`${trend.label}: ${trend.value}`}
-                        />
-                        <div className="text-xs font-medium text-gray-600">{trend.label}</div>
-                      </div>
-                    )
-                  })}
-                </div>
+                {monthlyTrends.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No data available</div>
+                ) : (
+                  <div className="flex items-end justify-between h-64 gap-4">
+                    {monthlyTrends.map((trend, index) => {
+                      const maxValue = Math.max(...monthlyTrends.map(t => t.value))
+                      const heightPercentage = (trend.value / maxValue) * 100
+                      return (
+                        <div key={index} className="flex-1 flex flex-col items-center gap-2">
+                          <div className="text-sm font-semibold text-gray-900">{trend.value}</div>
+                          <div
+                            className="w-full bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-lg transition-all hover:opacity-80 cursor-pointer"
+                            style={{ height: `${heightPercentage}%`, minHeight: '20px' }}
+                            title={`${trend.label}: ${trend.value}`}
+                          />
+                          <div className="text-xs font-medium text-gray-600">{trend.label}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Top Performing Products */}
             <Card>
               <CardHeader>
-                <CardTitle>{isEnglish ? 'Top Performing Products' : 'Produk Berprestasi Terbaik'}</CardTitle>
-                <CardDescription>
-                  {isEnglish ? 'Best performing loan products by leads and revenue' : 'Produk pinjaman terbaik mengikut lead dan hasil'}
-                </CardDescription>
+                <CardTitle>Top Performing Products</CardTitle>
+                <CardDescription>Best performing loan products by leads and revenue</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">
-                          {isEnglish ? 'Product Name' : 'Nama Produk'}
-                        </th>
-                        <th className="text-right py-3 px-4 font-semibold text-sm text-gray-700">
-                          {isEnglish ? 'Leads' : 'Lead'}
-                        </th>
-                        <th className="text-right py-3 px-4 font-semibold text-sm text-gray-700">
-                          {isEnglish ? 'Conversion' : 'Penukaran'}
-                        </th>
-                        <th className="text-right py-3 px-4 font-semibold text-sm text-gray-700">
-                          {isEnglish ? 'Revenue' : 'Hasil'}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {topProducts.map((product, index) => (
-                        <tr key={index} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">
-                                {index + 1}
-                              </div>
-                              <span className="font-medium text-gray-900">{product.name}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-right text-gray-900">{product.leads}</td>
-                          <td className="py-3 px-4 text-right">
-                            <Badge className="bg-green-100 text-green-800">{product.conversion}</Badge>
-                          </td>
-                          <td className="py-3 px-4 text-right font-semibold text-gray-900">{product.revenue}</td>
+                {topProducts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No data available</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">
+                            Product Name
+                          </th>
+                          <th className="text-right py-3 px-4 font-semibold text-sm text-gray-700">
+                            Leads
+                          </th>
+                          <th className="text-right py-3 px-4 font-semibold text-sm text-gray-700">
+                            Conversion
+                          </th>
+                          <th className="text-right py-3 px-4 font-semibold text-sm text-gray-700">
+                            Revenue
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {topProducts.map((product, index) => (
+                          <tr key={index} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm">
+                                  {index + 1}
+                                </div>
+                                <span className="font-medium text-gray-900">{product.name}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right text-gray-900">{product.leads}</td>
+                            <td className="py-3 px-4 text-right">
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                {product.conversion}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4 text-right font-semibold text-gray-900">{product.revenue}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>
         )}
       </div>
-
-      {/* Toast Notification */}
-      {toast.show && (
-        <Toast
-          title={toast.title}
-          description={toast.description}
-          variant={toast.variant}
-          onClose={() => setToast({ ...toast, show: false })}
-        />
-      )}
     </div>
   )
 }
